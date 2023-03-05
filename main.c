@@ -4,12 +4,21 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#ifdef TIME
+#include <time.h>
+#endif
+
 int main(int argc, char **argv) {
     /*allocate*/
     WeightedStringPointers wsp[256], temp_wsp;
     String mainStrings[256], temp_string, small_temp_string;
     int i, j, k;
     FILE *f_in, *f_out;
+
+    #ifdef TIME
+        clock_t t0, t1;
+        t0 = clock();
+    #endif
 
     /*idiotproofing*/
     if(argc==1) {
@@ -132,11 +141,17 @@ int main(int argc, char **argv) {
     for(i=0; i<256; i++) {
         #ifdef DEBUG
         if(mainStrings[i].len)
-            printf("%d: %c %s\n", i, i, mainStrings[i].text);
+            printf("%d: %c | %s\n", i, i > 31 ? i : 0, mainStrings[i].text);
         #endif
         freeString(&mainStrings[i]);
     }
 
     printf("%s: Plik %s zostal pomslnie skompresowany do pliku out.huff\n", argv[0], argv[1]);
+
+    #ifdef TIME
+    t1 = clock();
+    printf("Czas: %f\n", (double)(t1-t0) / CLOCKS_PER_SEC);
+    #endif
+
     return 0;
 }
