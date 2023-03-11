@@ -5,7 +5,7 @@
 
 /*allocate wsp*/
 void allocateWeightedStringPointers(WeightedStringPointers *in, int len, int weight) {
-    in->pointers = malloc(sizeof(String*) * len + 1);
+    in->pointers = malloc(sizeof(String*) * len);
     in->weight = weight;
     in->len = len;
 }

@@ -12,12 +12,36 @@
     int in = 0, out = 1;
 #endif
 
+#ifdef TREE
+int cmpfun2(void const * a, void const * b) {
+    const String *ao = a;
+    const String *bo = b;
+    int i, j = 1, ac = 0, bc = 0;
+
+    for(i=ao->len<bo->len ? bo->len-1: ao->len-1; i>=0; i--) {
+        if(ao->len > i)
+            ac += (ao->text[i]-48)*j;
+        if(bo->len > i)
+            bc += (bo->text[i]-48)*j;
+        j *= 2;
+    }
+    return bc-ac;
+}
+#endif
+
+
+
 int main(int argc, char **argv) {
     /*allocate*/
     WeightedStringPointers wsp[256], temp_wsp;
     String mainStrings[256], temp_string, small_temp_string;
     int i, j, k;
     FILE *f_in, *f_out;
+
+    #ifdef TREE
+    String *temp_string_arr;
+    int *dep, str_len, dep_len = 0, forward, ct;
+    #endif
 
     #ifdef TIME
         clock_t t0, t1;
@@ -52,6 +76,7 @@ int main(int argc, char **argv) {
 
     }
 
+    /*go through file name*/
     for(i=0; i<sizeof(argv[1])/sizeof(char); i++)
         wsp[(int)(argv[1][i])].weight++;
     wsp[47].weight++;
@@ -103,7 +128,7 @@ int main(int argc, char **argv) {
     allocateString(&small_temp_string, 8);
     f_out = fopen("out.huff", "wb");
 
-    /*writing out char codes*/
+    /*writes out char codes*/
     for(i=0; i<256; i++) {
         k = mainStrings[i].len;
         for(j=0; j<8; j++) {
@@ -123,12 +148,14 @@ int main(int argc, char **argv) {
 
     freeString(&small_temp_string);
 
+    /*writes out file name*/
     for(i=0; i<sizeof(argv[1])/sizeof(char); i++) {
         mergeString(&mainStrings[(int)(argv[1][i])], &temp_string);
         if(temp_string.len >= 8)
             writeOut(f_out, &temp_string);
     }
 
+    /*adds '\' char, since '\' can't be used in file names, both on windows and linux, can be recognized be decompressor as end of file name*/
     mergeString(&mainStrings[47], &temp_string);
     if(temp_string.len >= 8)
             writeOut(f_out, &temp_string);
@@ -166,13 +193,12 @@ int main(int argc, char **argv) {
     printf("\n\n");
     #endif
 
+    #ifdef DEBUG
     for(i=0; i<256; i++) {
-        #ifdef DEBUG
         if(mainStrings[i].len)
             printf("%d: %c | %s\n", i, i > 31 ? i : 0, mainStrings[i].text);
-        #endif
-        freeString(&mainStrings[i]);
     }
+    #endif
 
     printf("%s: Plik %s zostal pomslnie skompresowany do pliku out.huff\n", argv[0], argv[1]);
 
@@ -186,5 +212,76 @@ int main(int argc, char **argv) {
     printf("Rozmiar danych przed kompresja: %d bitow\nRozmiar danych po kompresji: %d bitow\nStopien kompresji: %f%%\n", in, out, ((double)((in - out) * 100))/in);
     #endif
 
+    #ifdef TREE
+    /*whole ifdef creates visualization of binary tree, chars from 32 to 126 are printed as chars with '', otherwise they are numbers without '', not needed for decompression*/
+    str_len = 0;
+    for(i=0; i<256; i++)
+        if(mainStrings[i].len)
+            str_len++;
+    temp_string_arr = malloc(sizeof(String) * str_len);
+    dep = calloc(str_len*2-1, sizeof(int));
+
+    j = 0;
+    for(i=0; i<256; i++)
+        if(mainStrings[i].len)
+            temp_string_arr[j++] = mainStrings[i];
+
+    qsort(temp_string_arr, str_len, sizeof(String), cmpfun2);
+
+    for(i=0; i<2*str_len-1; i++) {
+        if(i%2==0) {
+            for(j=0; j<(temp_string_arr[i/2].len+1)*2; j++)
+                if(j<temp_string_arr[i/2].len*2) {
+                    ct=0;
+                    for(k=0; k<dep_len; k++)
+                        if(dep[k]==j+1)
+                            ct++;
+                    if(ct%2)
+                        printf("|");
+                    else
+                        printf(" ");
+                } else if(j == temp_string_arr[i/2].len*2){
+                    for(k=0; k<256; k++)
+                        if(mainStrings[k].text==temp_string_arr[i/2].text)
+                            break;
+                    if(k>31 && k<127)
+                        printf("_ '%c' - %s\n", k, temp_string_arr[i/2].text);
+                    else
+                        printf("_ %d - %s\n", k, temp_string_arr[i/2].text);
+                }
+            dep[dep_len++] = j-2;
+            forward = (temp_string_arr[i/2].len-1)*2;
+        } else {
+            for(j=dep_len-2; j>=0; j-=2)
+                if(dep[j]==forward)
+                    forward-=2;
+                else if(dep[j]<forward)
+                    break;
+            dep[dep_len++] = forward;
+            for(j=0; j<(temp_string_arr[i/2].len)*2+1; j++)
+                if(j!=forward) {
+                    ct=0;
+                    for(k=0; k<dep_len-1; k++)
+                        if(dep[k]==j+1)
+                            ct++;
+                    if(ct%2)
+                        printf("|");
+                    else
+                        printf(" ");
+                }
+                else {
+                    printf("_|\n");
+                    break;
+                }
+        }
+    }
+
+    free(dep);
+    free(temp_string_arr);
+    #endif
+
+
+    for(i=0; i<256; i++)
+        freeString(&mainStrings[i]);
     return 0;
 }

@@ -5,7 +5,7 @@
 
 /*allocate String with n spaces for chars*/
 void allocateString(String *in, int n) {
-    in->text = malloc(sizeof(char) * n + 1);
+    in->text = malloc(sizeof(char) * n);
     in->alloc = n;
     in->len = 0;
 }
@@ -13,7 +13,7 @@ void allocateString(String *in, int n) {
 /*double allocation of String*/
 void doubleStringSize(String *in) {
     in->alloc *= 2;
-    in->text = realloc(in->text, sizeof(char) * in->alloc + 1);
+    in->text = realloc(in->text, sizeof(char) * in->alloc);
 }
 
 /*pushes char at the end of String*/
