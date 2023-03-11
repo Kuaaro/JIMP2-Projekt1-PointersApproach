@@ -8,6 +8,10 @@
 #include <time.h>
 #endif
 
+#ifdef SIZE
+    int in = 0, out = 1;
+#endif
+
 int main(int argc, char **argv) {
     /*allocate*/
     WeightedStringPointers wsp[256], temp_wsp;
@@ -42,7 +46,15 @@ int main(int argc, char **argv) {
     /*go through file*/
     while((i = getc(f_in)) != EOF) {
         wsp[i].weight++;
+        #ifdef SIZE
+        in++;
+        #endif
+
     }
+
+    for(i=0; i<sizeof(argv[1])/sizeof(char); i++)
+        wsp[(int)(argv[1][i])].weight++;
+    wsp[47].weight++;
 
     /*sort wsp*/
     qsort(wsp, 256, sizeof(WeightedStringPointers), cmpfun);
@@ -104,7 +116,6 @@ int main(int argc, char **argv) {
         pullString(&small_temp_string, 8);
         if(temp_string.len >= 8)
             writeOut(f_out, &temp_string);
-
         mergeString(&mainStrings[i], &temp_string);
         if(temp_string.len >= 8)
             writeOut(f_out, &temp_string);
@@ -112,10 +123,23 @@ int main(int argc, char **argv) {
 
     freeString(&small_temp_string);
 
+    for(i=0; i<sizeof(argv[1])/sizeof(char); i++) {
+        mergeString(&mainStrings[(int)(argv[1][i])], &temp_string);
+        if(temp_string.len >= 8)
+            writeOut(f_out, &temp_string);
+    }
+
+    mergeString(&mainStrings[47], &temp_string);
+    if(temp_string.len >= 8)
+            writeOut(f_out, &temp_string);
+
     /*compressing file*/
     rewind(f_in);
     while((i = getc(f_in)) != EOF) {
         mergeString(&mainStrings[i], &temp_string);
+        #ifdef SIZE
+        out += mainStrings[i].len;
+        #endif
         if(temp_string.len >= 8)
             writeOut(f_out, &temp_string);
     }
@@ -124,8 +148,12 @@ int main(int argc, char **argv) {
     pushString(&temp_string, '1');
     if(temp_string.len >= 8)
         writeOut(f_out, &temp_string);
-    while(temp_string.len != 8)
+    while(temp_string.len%8!=0) {
         pushString(&temp_string, '0');
+        #ifdef SIZE
+            out++;
+        #endif
+    }
     writeOut(f_out, &temp_string);
 
     /*frees*/
@@ -151,6 +179,11 @@ int main(int argc, char **argv) {
     #ifdef TIME
     t1 = clock();
     printf("Czas: %f\n", (double)(t1-t0) / CLOCKS_PER_SEC);
+    #endif
+
+    #ifdef SIZE
+    in *= 8;
+    printf("Rozmiar danych przed kompresja: %d bitow\nRozmiar danych po kompresji: %d bitow\nStopien kompresji: %f%%\n", in, out, ((double)((in - out) * 100))/in);
     #endif
 
     return 0;
